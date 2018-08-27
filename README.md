@@ -50,6 +50,7 @@ then submit a Pull Request to this repo. This is called [GitHub Flow](https://gu
 ## Remaining Work
 
 * Populate port number from launchSettings.json
+* Add place to configure ngrok.exe path. Consider cross platform compatibility.
 * Add IWebHostBuilder
 * Add ability to inject IConfiguration into the pipeline
 * Changeup unit tests
