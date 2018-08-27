@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace NgrokExtensions
@@ -20,28 +21,25 @@ namespace NgrokExtensions
     public class NgrokUtils
     {
         public const string NgrokNotFoundMessage = "ngrok executable not found. Configure the path in the via the add-in options or add the location to your PATH.";
-        //private readonly Dictionary<string, WebAppConfig> _webApps;
-        private readonly Func<string, Task> _showErrorFunc;
         private readonly HttpClient _ngrokApi;
         private Tunnel[] _tunnels;
         private readonly NgrokProcess _ngrokProcess;
 		private readonly WebAppConfig _webAppConfig;
+		private readonly ILogger _logger;
 
         public NgrokUtils(
 			WebAppConfig webAppConfig, 
 			string exePath,
-            Func<string, Task> asyncShowErrorFunc, 
-            HttpClient client = null, NgrokProcess ngrokProcess = null)
+			ILogger<NgrokUtils> logger,
+			HttpClient client = null, NgrokProcess ngrokProcess = null)
         {
-            //_webApps = webApps;
             _ngrokProcess = ngrokProcess ?? new NgrokProcess(exePath);
-            //_showErrorFunc = asyncShowErrorFunc;
             _ngrokApi = client ?? new HttpClient();
             _ngrokApi.BaseAddress = new Uri("http://localhost:4040");
             _ngrokApi.DefaultRequestHeaders.Accept.Clear();
             _ngrokApi.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 			_webAppConfig = webAppConfig;
-			_showErrorFunc = asyncShowErrorFunc;
+			_logger = logger;
 
 		}
 
@@ -50,7 +48,7 @@ namespace NgrokExtensions
             return _ngrokProcess.IsInstalled();
         }
 
-        public async Task<string> StartTunnelsAsync()
+        public async Task<IEnumerable<Tunnel>> StartTunnelsAsync()
         {
             Exception uncaughtException = null;
 
@@ -60,13 +58,13 @@ namespace NgrokExtensions
             }
             catch (FileNotFoundException)
             {
-                await _showErrorFunc(NgrokNotFoundMessage);
+				_logger.Log(LogLevel.Error, NgrokNotFoundMessage);
             }
             catch (Win32Exception ex)
             {
                 if (ex.ErrorCode.ToString("X") == "80004005")
                 {
-                    await _showErrorFunc(NgrokNotFoundMessage);
+					_logger.Log(LogLevel.Error, NgrokNotFoundMessage);
                 }
                 else
                 {
@@ -80,12 +78,12 @@ namespace NgrokExtensions
 
             if (uncaughtException != null)
             {
-                await _showErrorFunc($"Ran into a problem trying to start the ngrok tunnel(s): {uncaughtException}");
+                _logger.Log(LogLevel.Critical, "Ran into a problem trying to start the ngrok tunnel(s): {uncaughtException}", uncaughtException);
             }
-			return "";
+			return null;
         }
 
-        private async Task<string> DoStartTunnelsAsync()
+        private async Task<IEnumerable<Tunnel>> DoStartTunnelsAsync()
         {
             await StartNgrokAsync();
 			return await StartNgrokTunnelAsync("project name");
@@ -99,7 +97,7 @@ namespace NgrokExtensions
             await Task.Delay(250);
 
             if (await CanGetTunnelList(retry:true)) return;
-            await _showErrorFunc("Cannot start ngrok. Is it installed and in your PATH?");
+             _logger.Log(LogLevel.Critical, "Cannot start ngrok. Is it installed and in your PATH?");
         }
 
         private async Task<bool> CanGetTunnelList(bool retry = false)
@@ -137,24 +135,24 @@ namespace NgrokExtensions
             }
         }
 
-        private async Task<string> StartNgrokTunnelAsync(string projectName)
+        private async Task<IEnumerable<Tunnel>> StartNgrokTunnelAsync(string projectName)
         {
             var addr = $"localhost:{_webAppConfig.PortNumber}";
 
 			var existingTunnels = _tunnels.Where(t => t.config.addr == addr);
 
-			if (!existingTunnels.Any())
+			if (existingTunnels.Any())
 			{
-				var publicUrl = await CreateTunnelAsync(projectName, addr);
-				return publicUrl;
+				_logger.Log(LogLevel.Information, "Existing tunnels: {@tunnels}", existingTunnels);
+				return existingTunnels;
 			} else
 			{
-				var publicUrl = existingTunnels.First().public_url;
-				return publicUrl;
+				var tunnel = await CreateTunnelAsync(projectName, addr);
+				return IEnumerableExt.SingleItemAsEnumerable(tunnel);
 			}
         }
 
-        private async Task<string> CreateTunnelAsync(string projectName, string addr, bool retry = false)
+        private async Task<Tunnel> CreateTunnelAsync(string projectName, string addr, bool retry = false)
         {
             var request = new NgrokTunnelApiRequest
             {
@@ -189,7 +187,7 @@ namespace NgrokExtensions
 
                 if (error != null)
                 {
-                    await _showErrorFunc($"Could not create tunnel for {projectName} ({addr}): " +
+                    _logger.Log(LogLevel.Error, $"Could not create tunnel for {projectName} ({addr}): " +
                                          $"\n[{error.error_code}] {error.msg}" +
                                          $"\nDetails: {error.details.err.Replace("\\n", "\n")}");
                 }
@@ -197,7 +195,7 @@ namespace NgrokExtensions
                 {
                     if (retry)
                     {
-                        await _showErrorFunc($"Could not create tunnel for {projectName} ({addr}): " +
+                        _logger.Log(LogLevel.Error, $"Could not create tunnel for {projectName} ({addr}): " +
                                              $"\n{errorText}");
                     }
                     else
@@ -206,13 +204,20 @@ namespace NgrokExtensions
                         await CreateTunnelAsync(projectName, addr, true);
                     }
                 }
-                return "";
+                return null;
             }
 
             var responseText = await response.Content.ReadAsStringAsync();
             Debug.WriteLine($"responseText: '{responseText}'");
-            var tunnel = JsonConvert.DeserializeObject<Tunnel>(responseText);
-			return tunnel.public_url;
+            return JsonConvert.DeserializeObject<Tunnel>(responseText);
         }
     }
+	public static class IEnumerableExt
+	{
+		// usage: someObject.SingleItemAsEnumerable();
+		public static IEnumerable<T> SingleItemAsEnumerable<T>(this T item)
+		{
+			yield return item;
+		}
+	}
 }
