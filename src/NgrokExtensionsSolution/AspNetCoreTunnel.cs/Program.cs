@@ -8,7 +8,6 @@ namespace AspNetCoreTunnel.cs
 	{
 		static async System.Threading.Tasks.Task Main(string[] args)
 		{
-			var proc = new NgrokProcess("ngrok.exe");
 			var webApp = new WebAppConfig()
 			{
 				PortNumber = 5000
@@ -19,9 +18,10 @@ namespace AspNetCoreTunnel.cs
 				Console.WriteLine(error); return Task.FromResult(0);
 			});
 
-			await ngrok.StartTunnelsAsync();
+			var publicUrl = await ngrok.StartTunnelsAsync();
 
-			Console.WriteLine("Hello World!");
+			Console.WriteLine($"Public Url: {publicUrl}");
+			Console.ReadLine();
 		}
 	}
 }

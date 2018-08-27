@@ -50,13 +50,13 @@ namespace NgrokExtensions
             return _ngrokProcess.IsInstalled();
         }
 
-        public async Task StartTunnelsAsync()
+        public async Task<string> StartTunnelsAsync()
         {
             Exception uncaughtException = null;
 
             try
             {
-                await DoStartTunnelsAsync();
+                return await DoStartTunnelsAsync();
             }
             catch (FileNotFoundException)
             {
@@ -82,13 +82,13 @@ namespace NgrokExtensions
             {
                 await _showErrorFunc($"Ran into a problem trying to start the ngrok tunnel(s): {uncaughtException}");
             }
+			return "";
         }
 
-        private async Task DoStartTunnelsAsync()
+        private async Task<string> DoStartTunnelsAsync()
         {
             await StartNgrokAsync();
-			// TODO Get WebAppConfig from appsettings.json
-			await StartNgrokTunnelAsync("project name", _webAppConfig);
+			return await StartNgrokTunnelAsync("project name");
 		}
 
         private async Task StartNgrokAsync(bool retry = false)
@@ -137,21 +137,24 @@ namespace NgrokExtensions
             }
         }
 
-        private async Task StartNgrokTunnelAsync(string projectName, WebAppConfig config)
+        private async Task<string> StartNgrokTunnelAsync(string projectName)
         {
-            var addr = $"localhost:{config.PortNumber}";
-            if (!TunnelAlreadyExists(addr))
-            {
-                await CreateTunnelAsync(projectName, config, addr);
-            }
+            var addr = $"localhost:{_webAppConfig.PortNumber}";
+
+			var existingTunnels = _tunnels.Where(t => t.config.addr == addr);
+
+			if (!existingTunnels.Any())
+			{
+				var publicUrl = await CreateTunnelAsync(projectName, addr);
+				return publicUrl;
+			} else
+			{
+				var publicUrl = existingTunnels.First().public_url;
+				return publicUrl;
+			}
         }
 
-        private bool TunnelAlreadyExists(string addr)
-        {
-            return _tunnels.Any(t => t.config.addr == addr);
-        }
-
-        private async Task CreateTunnelAsync(string projectName, WebAppConfig config, string addr, bool retry = false)
+        private async Task<string> CreateTunnelAsync(string projectName, string addr, bool retry = false)
         {
             var request = new NgrokTunnelApiRequest
             {
@@ -160,9 +163,9 @@ namespace NgrokExtensions
                 proto = "http",
                 host_header = addr
             };
-            if (!string.IsNullOrEmpty(config.SubDomain))
+            if (!string.IsNullOrEmpty(_webAppConfig.SubDomain))
             {
-                request.subdomain = config.SubDomain;
+                request.subdomain = _webAppConfig.SubDomain;
             }
 
             Debug.WriteLine($"request: '{JsonConvert.SerializeObject(request)}'");
@@ -200,17 +203,16 @@ namespace NgrokExtensions
                     else
                     {
                         await Task.Delay(1000);  // wait for ngrok to spin up completely?
-                        await CreateTunnelAsync(projectName, config, addr, true);
+                        await CreateTunnelAsync(projectName, addr, true);
                     }
                 }
-                return;
+                return "";
             }
 
             var responseText = await response.Content.ReadAsStringAsync();
             Debug.WriteLine($"responseText: '{responseText}'");
             var tunnel = JsonConvert.DeserializeObject<Tunnel>(responseText);
-            config.PublicUrl = tunnel.public_url;
-            Debug.WriteLine(config.PublicUrl);
+			return tunnel.public_url;
         }
     }
 }
