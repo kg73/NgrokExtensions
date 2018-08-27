@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NgrokExtensions", "NgrokExt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NgrokExtensions.Test", "NgrokExtensions.Test\NgrokExtensions.Test.csproj", "{A409F2F2-6E3A-45DD-8C7E-8DD8569E9023}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCoreTunnel", "AspNetCoreTunnel.cs\AspNetCoreTunnel.csproj", "{209672F1-CEAA-483A-91C3-22D028122574}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,8 +23,15 @@ Global
 		{A409F2F2-6E3A-45DD-8C7E-8DD8569E9023}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A409F2F2-6E3A-45DD-8C7E-8DD8569E9023}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A409F2F2-6E3A-45DD-8C7E-8DD8569E9023}.Release|Any CPU.Build.0 = Release|Any CPU
+		{209672F1-CEAA-483A-91C3-22D028122574}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{209672F1-CEAA-483A-91C3-22D028122574}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{209672F1-CEAA-483A-91C3-22D028122574}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{209672F1-CEAA-483A-91C3-22D028122574}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3E3E12FB-0F54-4D2D-9A31-08F47C3F19D0}
 	EndGlobalSection
 EndGlobal

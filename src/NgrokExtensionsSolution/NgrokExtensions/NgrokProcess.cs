@@ -24,6 +24,8 @@ namespace NgrokExtensions
                 WindowStyle = ProcessWindowStyle.Normal    
             };
 
+			pi.UseShellExecute = true;
+
             Start(pi);
         }
 

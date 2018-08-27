@@ -17,6 +17,7 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json;
+using Task = System.Threading.Tasks.Task;
 
 namespace NgrokExtensions
 {
@@ -39,29 +40,24 @@ namespace NgrokExtensions
         public const int CommandId = 0x0100;
         private const string NgrokSubdomainSettingName = "ngrok.subdomain";
         public static readonly Guid CommandSet = new Guid("30d1a36d-a03a-456d-b639-f28b9b23e161");
-        private readonly Package _package;
+        //private readonly Package _package;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StartTunnel"/> class.
         /// Adds our command handlers for menu (commands must exist in the command table file)
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        private StartTunnel(Package package)
+        private StartTunnel()
         {
-            if (package == null)
-            {
-                throw new ArgumentNullException(nameof(package));
-            }
-            _package = package;
+			var webApp = new WebAppConfig();
 
-            var commandService =
-                ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if (commandService == null) return;
+			var ngrok = new NgrokUtils(webApp, "ngrok.exe", (string errorMessage) => { Console.WriteLine(errorMessage); return Task.FromResult(0); });
 
-            var menuCommandId = new CommandID(CommandSet, CommandId);
-            var menuItem = new MenuCommand(this.MenuItemCallback, menuCommandId);
-            commandService.AddCommand(menuItem);
-        }
+			ThreadHelper.JoinableTaskFactory.Run(async delegate
+			{
+				await ngrok.StartTunnelsAsync();
+			});
+		}
 
         /// <summary>
         /// Gets the instance of the command.
@@ -71,7 +67,7 @@ namespace NgrokExtensions
         /// <summary>
         /// Gets the service provider from the owner package.
         /// </summary>
-        private IServiceProvider ServiceProvider => _package;
+        //private IServiceProvider ServiceProvider => _package;
 
         /// <summary>
         /// Initializes the singleton instance of the command.
@@ -79,7 +75,7 @@ namespace NgrokExtensions
         /// <param name="package">Owner package, not null.</param>
         public static void Initialize(Package package)
         {
-            Instance = new StartTunnel(package);
+            Instance = new StartTunnel();
         }
 
         /// <summary>
@@ -91,50 +87,7 @@ namespace NgrokExtensions
         /// <param name="e">Event args.</param>
         private void MenuItemCallback(object sender, EventArgs e)
         {
-            var webApps = GetWebApps();
-
-            if (webApps.Count == 0)
-            {
-                ShowErrorMessage("Did not find any Web projects.");
-                return;
-            }
-
-            var page = (OptionsPageGrid)_package.GetDialogPage(typeof(OptionsPageGrid));
-            var ngrok = new NgrokUtils(webApps, page.ExecutablePath, ShowErrorMessageAsync);
-
-            var installPlease = false;
-            if (!ngrok.NgrokIsInstalled())
-            {
-                if (AskUserYesNoQuestion(
-                    "Ngrok is not installed. Would you like me to download it from ngrok.com and install it for you?"))
-                {
-                    installPlease = true;
-                }
-                else
-                {
-                    return;
-                }
-            }
-
-            ThreadHelper.JoinableTaskFactory.Run(async delegate
-            {
-                await TaskScheduler.Default;
-                if (installPlease)
-                {
-                    try
-                    {
-                        var installer = new NgrokInstaller();
-                        page.ExecutablePath = await installer.InstallNgrok();
-                        ngrok = new NgrokUtils(webApps, page.ExecutablePath, ShowErrorMessageAsync);
-                    }
-                    catch (NgrokDownloadException ngrokDownloadException)
-                    {
-                        await ShowErrorMessageAsync(ngrokDownloadException.Message);
-                        return;
-                    }
-                }
-                await ngrok.StartTunnelsAsync();
-            });
+            
         }
 
         private async System.Threading.Tasks.Task ShowErrorMessageAsync(string message)
@@ -145,78 +98,27 @@ namespace NgrokExtensions
 
         private void ShowErrorMessage(string message)
         {
-            VsShellUtilities.ShowMessageBox(
-                this.ServiceProvider,
-                message,
-                "ngrok",
-                OLEMSGICON.OLEMSGICON_CRITICAL,
-                OLEMSGBUTTON.OLEMSGBUTTON_OK,
-                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+            //VsShellUtilities.ShowMessageBox(
+            //    this.ServiceProvider,
+            //    message,
+            //    "ngrok",
+            //    OLEMSGICON.OLEMSGICON_CRITICAL,
+            //    OLEMSGBUTTON.OLEMSGBUTTON_OK,
+            //    OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
         }
 
         private bool AskUserYesNoQuestion(string message)
         {
-            var result = VsShellUtilities.ShowMessageBox(
-                this.ServiceProvider,
-                message,
-                "ngrok",
-                OLEMSGICON.OLEMSGICON_QUERY,
-                OLEMSGBUTTON.OLEMSGBUTTON_YESNO,
-                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+			//var result = VsShellUtilities.ShowMessageBox(
+			//    this.ServiceProvider,
+			//    message,
+			//    "ngrok",
+			//    OLEMSGICON.OLEMSGICON_QUERY,
+			//    OLEMSGBUTTON.OLEMSGBUTTON_YESNO,
+			//    OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
 
-            return result == 6;  // Yes
-        }
-
-        private Dictionary<string, WebAppConfig> GetWebApps()
-        {
-            var webApps = new Dictionary<string, WebAppConfig>();
-            var projects = GetSolutionProjects();
-            if (projects == null) return webApps;
-
-            foreach (Project project in projects)
-            {
-                if (project.Properties == null) continue; // Project not loaded yet
-
-                foreach (Property prop in project.Properties)
-                {
-                    DebugWriteProp(prop);
-                    if (!PortPropertyNames.Contains(prop.Name)) continue;
-
-                    var webApp = new WebAppConfig();
-
-                    if (prop.Name == "FileName")
-                    {
-                        if (prop.Value.ToString().EndsWith(".funproj"))
-                        {
-                            // Azure Functions app - use port 7071
-                            webApp.PortNumber = 7071;
-                            LoadOptionsFromAppSettingsJson(project, webApp);
-                        }
-                        else
-                        {
-                            continue;  // FileName property not relevant otherwise
-                        }
-                    }
-                    else
-                    {
-                        var match = NumberPattern.Match(prop.Value.ToString());
-                        if (!match.Success) continue;
-                        webApp.PortNumber = int.Parse(match.Value);
-                        if (IsAspNetCoreProject(prop.Name))
-                        {
-                            LoadOptionsFromAppSettingsJson(project, webApp);
-                        }
-                        else
-                        {
-                            LoadOptionsFromWebConfig(project, webApp);
-                        }
-                    }
-
-                    webApps.Add(project.Name, webApp);
-                    break;
-                }
-            }
-            return webApps;
+			//return result == 6;  // Yes
+			return false;
         }
 
         private bool IsAspNetCoreProject(string propName)
@@ -288,10 +190,17 @@ namespace NgrokExtensions
             }
         }
 
-        private IEnumerable<Project> GetSolutionProjects()
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns></returns>
+		/// 
+		[Obsolete("Refactor to get this data through appsettings.json instead")]
+		private IEnumerable<Project> GetSolutionProjects()
         {
-            var solution = (ServiceProvider.GetService(typeof(SDTE)) as DTE)?.Solution;
-            return solution == null ? null : ProcessProjects(solution.Projects.Cast<Project>());
+			//var solution = (ServiceProvider.GetService(typeof(SDTE)) as DTE)?.Solution;
+			//return solution == null ? null : ProcessProjects(solution.Projects.Cast<Project>());
+			return new List<Project>();
         }
 
         private static IEnumerable<Project> ProcessProjects(IEnumerable<Project> projects)
