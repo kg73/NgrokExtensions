@@ -1,59 +1,24 @@
-# Ngrok Extensions for Visual Studio
+# Ngrok Extensions for ASP.NET Core applications
 
+TODO add new build and build status
 [![Build status](https://ci.appveyor.com/api/projects/status/mi2kn7oaluldhuyo/branch/master?svg=true)](https://ci.appveyor.com/project/dprothero/ngrokextensions/branch/master)
 
-This extension allows you to use [ngrok](https://ngrok.com) right from within Visual Studio.
-It will start a tunnel for each web application that is part of your solution.
-
-Currently has only been tested in Visual Studio 2015 and 2017.
+This extension allows you to start [ngrok](https://ngrok.com) right from your asp.net core application.
 
 ## Installation
 
-### From Visual Studio
+TODO Add nuget information here
 
-Get it from the [Visual Studio Gallery](https://visualstudiogallery.msdn.microsoft.com/56a642ed-a5e0-4044-8735-740d36912c5e).
-From within Visual Studio:
+## Configuration
 
-1. Select Tools... Extensions and Updates...
-2. Click "Online" and select the "Visual Studio Gallery" along the left-hand side of the window.
-3. Type "ngrok" into the search box in the upper right.
-4. Click the "Download" button on the extension in the search results.
-
-### Build from Source
-
-1. Clone this repo
-2. Open with Visual Studio 2017 and build a `Release` build
-3. Find the .vsix file in the `bin\Release` folder
-4. Double-click the .vsix file to install
-
-## Usage
-
-Currently, usage is super-simple. All you need to do is open a solution with
-one or more web projects and then choose "Start ngrok Tunnel" from the "Tools"
-menu.
-
-![Menu item](docs/img/menu-item.png)
+TODO Add documentation for IWebHostBuilder extensions
 
 ### Custom ngrok Subdomains
 
+TODO Add back functionality of reading in appsettings
+
 If you have a paid ngrok account, you can make use of custom subdomains with
 this extension.
-
-Specify the subdomain you would like it to use in a `ngrok.subdomain` key
-in the `appSettings` section of your `web.config` file like so:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <appSettings>
-    <add key="ngrok.subdomain" value="my-cool-app"/>
-    ... more appSettings keys omitted ...
-  </appSettings>
-  ... more config omitted ...
-</configuration>
-```
-
-#### Custom ngrok Subdomains with ASP.NET Core or Azure Functions
 
 If you are using an ASP.NET Core or Azure Functions project and want to test locally, you can set the
 `ngrok.subdomain` key in the `appsettings.json` file like so:
@@ -81,6 +46,16 @@ If you find a bug or would like to request a feature,
 To contribute, fork this repo to your own GitHub account. Then, create a
 branch on your own fork and perform the work. Push it up to your fork and
 then submit a Pull Request to this repo. This is called [GitHub Flow](https://guides.github.com/introduction/flow/).
+
+## Remaining Work
+
+* Add IWebHostBuilder
+* Add ability to inject IConfiguration into the pipeline
+* Changeup unit tests
+* Come up with strategy to share code back to parent project
+	* Split out process management parts to it's own netstandard2.0 library
+	* Retain visual studio extension parts in a separate project targeted to netframework541
+	* Contain all my changes for asp.net core it's own library. This library should contain just IWebHostBuilder, IAppBuilder, etc extension methods
 
 ## Change Log
 
