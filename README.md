@@ -49,9 +49,11 @@ then submit a Pull Request to this repo. This is called [GitHub Flow](https://gu
 
 ## Remaining Work
 
+* Populate port number from launchSettings.json
 * Add IWebHostBuilder
 * Add ability to inject IConfiguration into the pipeline
 * Changeup unit tests
+* Writeout tunnel information to an IOptions<TunnelConfig> or similar
 * Come up with strategy to share code back to parent project
 	* Split out process management parts to it's own netstandard2.0 library
 	* Retain visual studio extension parts in a separate project targeted to netframework541
