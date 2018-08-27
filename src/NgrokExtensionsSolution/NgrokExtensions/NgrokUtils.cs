@@ -11,6 +11,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -40,7 +41,9 @@ namespace NgrokExtensions
             _ngrokApi.DefaultRequestHeaders.Accept.Clear();
             _ngrokApi.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 			_webAppConfig = webAppConfig;
-        }
+			_showErrorFunc = asyncShowErrorFunc;
+
+		}
 
         public bool NgrokIsInstalled()
         {
@@ -85,7 +88,7 @@ namespace NgrokExtensions
         {
             await StartNgrokAsync();
 			// TODO Get WebAppConfig from appsettings.json
-			await StartNgrokTunnelAsync("project name", new WebAppConfig());
+			await StartNgrokTunnelAsync("project name", _webAppConfig);
 		}
 
         private async Task StartNgrokAsync(bool retry = false)
@@ -127,7 +130,7 @@ namespace NgrokExtensions
 				catch (Exception ex)
 				{
 					Console.WriteLine(ex.Message);
-					//throw;
+					throw;
 				}
                 
                 _tunnels = apiResponse.tunnels;
@@ -163,7 +166,9 @@ namespace NgrokExtensions
             }
 
             Debug.WriteLine($"request: '{JsonConvert.SerializeObject(request)}'");
-            var response = await _ngrokApi.PostAsJsonAsync("/api/tunnels", request);
+			var json = JsonConvert.SerializeObject(request);
+			var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+			var response = await _ngrokApi.PostAsync("/api/tunnels", httpContent);
             if (!response.IsSuccessStatusCode)
             {
                 var errorText = await response.Content.ReadAsStringAsync();

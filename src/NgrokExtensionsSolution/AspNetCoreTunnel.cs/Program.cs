@@ -21,10 +21,6 @@ namespace AspNetCoreTunnel.cs
 
 			await ngrok.StartTunnelsAsync();
 
-			
-
-			//await proc.StartTunnelsAsync();
-
 			Console.WriteLine("Hello World!");
 		}
 	}
