@@ -41,7 +41,13 @@ namespace AspNetCoreTunnel.cs
 			var publicUrl = httpsPreferredTunnel.public_url;
 
 			logger.Log(LogLevel.Information, "Public Url: {publicUrl}", publicUrl);
+			Console.WriteLine("Press Enter to close ngrok process");
 			Console.ReadLine();
+			await ngrok.StopNgrok();
+			Console.WriteLine("Ngrok stopped");
+			Console.WriteLine("Press Enter to close this app");
+			Console.ReadLine();
+			
 		}
 
 		private static void ConfigureServices(IServiceCollection serviceCollection)

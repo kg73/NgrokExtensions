@@ -100,6 +100,12 @@ namespace NgrokExtensions
              _logger.Log(LogLevel.Critical, "Cannot start ngrok. Is it installed and in your PATH?");
         }
 
+		public Task StopNgrok()
+		{
+			_ngrokProcess.StopNgrokProcess();
+			return Task.CompletedTask;
+		}
+
         private async Task<bool> CanGetTunnelList(bool retry = false)
         {
             try

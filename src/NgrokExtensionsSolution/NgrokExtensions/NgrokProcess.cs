@@ -8,6 +8,7 @@ namespace NgrokExtensions
     public class NgrokProcess
     {
         private readonly string _exePath;
+		private Process _process;
 
         public NgrokProcess(string exePath)
         {
@@ -29,6 +30,11 @@ namespace NgrokExtensions
             Start(pi);
         }
 
+		public void StopNgrokProcess()
+		{
+			Stop();
+		}
+
         private string GetNgrokPath()
         {
             var path = "ngrok.exe";
@@ -43,8 +49,21 @@ namespace NgrokExtensions
 
         protected virtual void Start(ProcessStartInfo pi)
         {
-            Process.Start(pi);
+            var startedProcess = Process.Start(pi);
+			_process = startedProcess;
         }
+
+		protected virtual void Stop()
+		{
+			if (_process != null && !_process.HasExited)
+			{
+				_process.Kill();
+				foreach (var p in Process.GetProcessesByName("ngrok"))
+				{
+					p.Kill();
+				}
+			}
+		}
 
         public bool IsInstalled()
         {
